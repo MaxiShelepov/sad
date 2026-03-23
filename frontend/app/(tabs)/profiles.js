@@ -40,18 +40,28 @@ export default function ProfilesScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [form, setForm] = useState(initialForm);
 
+  function mergeProfiles(nextItems) {
+    setProfiles((current) => {
+      const map = new Map(current.map((item) => [item.id, item]));
+      nextItems.forEach((item) => map.set(item.id, item));
+      return Array.from(map.values());
+    });
+  }
+
   const availableSlots = useMemo(() => {
     const maxProfiles = subscription?.max_profiles ?? 0;
     return Math.max(maxProfiles - profiles.length, 0);
   }, [profiles.length, subscription?.max_profiles]);
 
-  const loadProfiles = useCallback(async () => {
+  const loadProfiles = useCallback(async (background = false) => {
     if (!hwid) {
       return;
     }
 
     try {
-      setLoading(true);
+      if (!background) {
+        setLoading(true);
+      }
       const data = await api.getProfiles(hwid);
       setProfiles(data);
       setError('');
@@ -59,7 +69,9 @@ export default function ProfilesScreen() {
     } catch (requestError) {
       setError(requestError.message || 'Не удалось загрузить профили');
     } finally {
-      setLoading(false);
+      if (!background) {
+        setLoading(false);
+      }
     }
   }, [hwid, refreshAll]);
 
@@ -73,14 +85,19 @@ export default function ProfilesScreen() {
     try {
       setSaving(true);
       setError('');
+      let createdItems = [];
       if (form.batch.trim()) {
-        await api.importProfiles({ hwid, raw_text: form.batch });
+        createdItems = await api.importProfiles({ hwid, raw_text: form.batch });
       } else {
-        await api.createProfile({ ...form, hwid });
+        const createdProfile = await api.createProfile({ ...form, hwid });
+        createdItems = [createdProfile];
       }
+      mergeProfiles(createdItems);
       setForm(initialForm);
       setModalVisible(false);
-      await loadProfiles();
+      setLoading(false);
+      refreshAll(hwid, true);
+      loadProfiles(true);
     } catch (requestError) {
       setError(requestError.message || 'Не удалось сохранить профиль');
     } finally {
@@ -114,7 +131,7 @@ export default function ProfilesScreen() {
 
         {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
 
-        {loading ? (
+        {loading && profiles.length === 0 ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator color={theme.primary} size="large" />
           </View>
@@ -134,6 +151,10 @@ export default function ProfilesScreen() {
             />
           ))
         )}
+
+        {loading && profiles.length > 0 ? (
+          <Text style={[styles.syncText, { color: theme.textSecondary }]}>Синхронизация списка…</Text>
+        ) : null}
       </Screen>
 
       <SheetModal testID="profile-sheet-modal" title="Новый профиль" visible={modalVisible} onClose={() => setModalVisible(false)}>
@@ -231,6 +252,10 @@ const styles = StyleSheet.create({
   error: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  syncText: {
+    fontSize: 13,
+    textAlign: 'center',
   },
   loadingBox: {
     paddingVertical: spacing.xl,
