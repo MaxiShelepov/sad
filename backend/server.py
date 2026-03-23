@@ -33,6 +33,7 @@ from repository import (
     get_dashboard,
     get_profile,
     get_subscription,
+    load_session_data,
     list_profiles,
     sanitize_hwid,
     update_fingerprint,
@@ -44,6 +45,7 @@ from warmup_engine import create_job, launch_job, request_stop, reset_running_jo
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+load_dotenv(ROOT_DIR / '.env.custom', override=True)
 
 # MongoDB connection
 mongo_url = os.environ['MONGO_URL']
@@ -157,8 +159,8 @@ async def import_profiles(payload: ProfileImportRequest):
 
 
 @api_router.put("/profiles/{profile_id}", response_model=ProfileRecord)
-async def profiles_update(profile_id: str, payload: ProfileUpdate):
-    updated = await update_profile(db, profile_id, payload.model_dump())
+async def profiles_update(profile_id: str, payload: ProfileUpdate, hwid: str = Query(..., min_length=6)):
+    updated = await update_profile(db, profile_id, hwid, payload.model_dump())
     if not updated:
         raise HTTPException(status_code=404, detail="Профиль не найден")
     return updated
@@ -173,49 +175,48 @@ async def profiles_delete(profile_id: str, hwid: str = Query(..., min_length=6))
 
 
 @api_router.get("/profiles/{profile_id}", response_model=ProfileRecord)
-async def profile_details(profile_id: str):
-    profile = await get_profile(db, profile_id)
+async def profile_details(profile_id: str, hwid: str = Query(..., min_length=6)):
+    profile = await get_profile(db, hwid, profile_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Профиль не найден")
     return profile
 
 
 @api_router.get("/profiles/{profile_id}/fingerprint")
-async def profile_fingerprint(profile_id: str):
-    profile = await get_profile(db, profile_id)
+async def profile_fingerprint(profile_id: str, hwid: str = Query(..., min_length=6)):
+    profile = await get_profile(db, hwid, profile_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Профиль не найден")
     return {"success": True, "fingerprint": profile.fingerprint}
 
 
 @api_router.put("/profiles/{profile_id}/fingerprint", response_model=ProfileRecord)
-async def profile_fingerprint_update(profile_id: str, payload: FingerprintUpdateRequest):
-    profile = await update_fingerprint(db, profile_id, payload.model_dump(exclude_none=True))
+async def profile_fingerprint_update(profile_id: str, payload: FingerprintUpdateRequest, hwid: str = Query(..., min_length=6)):
+    profile = await update_fingerprint(db, hwid, profile_id, payload.model_dump(exclude_none=True))
     if not profile:
         raise HTTPException(status_code=404, detail="Профиль не найден")
     return profile
 
 
 @api_router.post("/profiles/{profile_id}/fingerprint/randomize", response_model=ProfileRecord)
-async def profile_fingerprint_randomize(profile_id: str):
-    profile = await update_fingerprint(db, profile_id, {})
+async def profile_fingerprint_randomize(profile_id: str, hwid: str = Query(..., min_length=6)):
+    profile = await update_fingerprint(db, hwid, profile_id, {})
     if not profile:
         raise HTTPException(status_code=404, detail="Профиль не найден")
     return profile
 
 
 @api_router.get("/profiles/{profile_id}/session")
-async def profile_session(profile_id: str):
-    profile = await get_profile(db, profile_id)
+async def profile_session(profile_id: str, hwid: str = Query(..., min_length=6)):
+    profile = await get_profile(db, hwid, profile_id)
     if not profile:
         raise HTTPException(status_code=404, detail="Профиль не найден")
-    stored = await db.profiles.find_one({"id": profile_id}, {"_id": 0, "session_data": 1})
-    return {"success": True, "session_data": stored.get("session_data", {}) if stored else {}}
+    return {"success": True, "session_data": await load_session_data(hwid, profile_id)}
 
 
 @api_router.put("/profiles/{profile_id}/session")
-async def profile_session_update(profile_id: str, payload: SessionPayload):
-    session_data = await update_session_data(db, profile_id, payload.data)
+async def profile_session_update(profile_id: str, payload: SessionPayload, hwid: str = Query(..., min_length=6)):
+    session_data = await update_session_data(hwid, profile_id, payload.data)
     if session_data is None:
         raise HTTPException(status_code=404, detail="Профиль не найден")
     return {"success": True, "session_data": session_data}
@@ -233,7 +234,7 @@ async def start_warmup(payload: WarmupStartRequest):
     if not subscription.active:
         raise HTTPException(status_code=403, detail="Подписка неактивна")
 
-    profile = await get_profile(db, payload.profile_id)
+    profile = await get_profile(db, payload.hwid, payload.profile_id)
     if not profile or profile.hwid != sanitize_hwid(payload.hwid):
         raise HTTPException(status_code=404, detail="Профиль не найден")
 
@@ -261,7 +262,7 @@ async def start_farm(payload: FarmStartRequest):
     group_id = str(uuid.uuid4())
     jobs: list[WarmupJobRecord] = []
     for item in payload.items:
-        profile = await get_profile(db, item.profile_id)
+        profile = await get_profile(db, payload.hwid, item.profile_id)
         if not profile or profile.hwid != sanitize_hwid(payload.hwid):
             continue
         job_doc = await create_job(db, profile.model_dump(), sanitize_hwid(payload.hwid), item.mode, item.minutes, group_id=group_id)

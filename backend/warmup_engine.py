@@ -5,8 +5,7 @@ import random
 import time
 import uuid
 
-from pymongo import ReturnDocument
-
+from remote_vortex import add_operation, update_active_profiles
 from repository import utc_now_iso
 
 
@@ -57,7 +56,6 @@ async def reset_running_jobs(db) -> None:
             "$push": {"logs": {"$each": [_build_log("warning", "Задача остановлена после перезапуска сервера")], "$slice": -120}},
         },
     )
-    await db.profiles.update_many({"is_running": True}, {"$set": {"is_running": False, "updated_at": now}})
 
 
 async def create_job(db, profile: dict, hwid: str, mode: str, minutes: int, group_id: str | None = None) -> dict:
@@ -114,30 +112,22 @@ async def stop_all_for_hwid(db, hwid: str) -> int:
     return len(jobs)
 
 
-async def _update_profile_stats(db, profile_id: str, action: str, success: bool) -> dict:
-    updated = await db.profiles.find_one_and_update(
-        {"id": profile_id},
-        {
-            "$inc": {
-                "stats.total_operations": 1,
-                "stats.successful_operations": 1 if success else 0,
-            },
-            "$set": {
-                "stats.last_action": action,
-                "updated_at": utc_now_iso(),
-            },
-        },
-        projection={"_id": 0, "stats": 1},
-        return_document=ReturnDocument.AFTER,
-    )
-    stats = updated.get("stats", {}) if updated else {}
-    total = max(1, int(stats.get("total_operations", 0)))
-    successful = int(stats.get("successful_operations", 0))
-    success_rate = successful / total
-    trust_score = max(35, min(99, int(48 + success_rate * 51)))
-    await db.profiles.update_one({"id": profile_id}, {"$set": {"stats.trust_score": trust_score}})
-    stats["trust_score"] = trust_score
-    return stats
+async def _sync_active_profiles(db, hwid: str) -> None:
+    docs = await db.warmup_jobs.find(
+        {"hwid": hwid, "status": {"$in": ["pending", "running"]}},
+        {"_id": 0, "profile_id": 1},
+    ).to_list(100)
+    active_ids = sorted({doc['profile_id'] for doc in docs})
+    await asyncio.to_thread(update_active_profiles, hwid, active_ids)
+
+
+async def _update_profile_stats(hwid: str, profile_id: str, action: str, success: bool) -> dict:
+    response = await asyncio.to_thread(add_operation, hwid, profile_id, success, action)
+    return {
+        'trust_score': int(response.get('trust_score', 0)),
+        'total_operations': int(response.get('total_operations', 0)),
+        'successful_operations': int(response.get('successful_operations', 0)),
+    }
 
 
 async def _finish_job(db, job: dict, status: str, action_text: str, level: str = "system") -> None:
@@ -149,10 +139,7 @@ async def _finish_job(db, job: dict, status: str, action_text: str, level: str =
             "$push": {"logs": {"$each": [_build_log(level, action_text)], "$slice": -120}},
         },
     )
-    await db.profiles.update_one(
-        {"id": job["profile_id"]},
-        {"$set": {"is_running": False, "updated_at": now}},
-    )
+    await _sync_active_profiles(db, job['hwid'])
 
 
 async def _run_job(db, job_id: str) -> None:
@@ -175,10 +162,7 @@ async def _run_job(db, job_id: str) -> None:
                 "$push": {"logs": {"$each": [_build_log("system", "Прогрев успешно запущен")], "$slice": -120}},
             },
         )
-        await db.profiles.update_one(
-            {"id": job["profile_id"]},
-            {"$set": {"is_running": True, "last_job_id": job_id, "updated_at": started_at}},
-        )
+        await _sync_active_profiles(db, job['hwid'])
 
         action_pool = ACTION_POOLS.get(job["mode"], ACTION_POOLS["balanced"])
         target_seconds = int(job["minutes"]) * 60
@@ -199,7 +183,7 @@ async def _run_job(db, job_id: str) -> None:
 
             action_text = random.choice(action_pool)
             success = random.random() > 0.14
-            stats = await _update_profile_stats(db, current_job["profile_id"], action_text, success)
+            stats = await _update_profile_stats(current_job['hwid'], current_job['profile_id'], action_text, success)
             elapsed_minutes = max(elapsed_seconds / 60, 1 / 60)
             metrics = {
                 "trust_score": int(stats.get("trust_score", 72)),

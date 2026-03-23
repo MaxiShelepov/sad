@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -55,6 +55,7 @@ export default function ProfilesScreen() {
 
   const loadProfiles = useCallback(async (background = false) => {
     if (!hwid) {
+      setLoading(false);
       return;
     }
 
@@ -80,6 +81,12 @@ export default function ProfilesScreen() {
       loadProfiles();
     }, [loadProfiles]),
   );
+
+  useEffect(() => {
+    if (hwid) {
+      loadProfiles(true);
+    }
+  }, [hwid, loadProfiles]);
 
   async function handleCreateOrImport() {
     try {
@@ -119,7 +126,7 @@ export default function ProfilesScreen() {
       <Screen testID="profiles-screen">
         <View style={styles.headerBlock}>
           <Text style={[styles.title, { color: theme.textPrimary }]}>Профили</Text>
-          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Список аккаунтов, отпечатков и активных запусков.</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Аккаунты, отпечатки, прокси и быстрый переход в прогрев.</Text>
         </View>
 
         <View style={styles.statsRow}>
@@ -128,6 +135,11 @@ export default function ProfilesScreen() {
         </View>
 
         <ActionButton icon="plus" label="Добавить или импортировать" onPress={() => setModalVisible(true)} testID="open-add-profile-button" />
+
+        <View style={[styles.bannerCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.bannerTitle, { color: theme.textPrimary }]}>Плотный desktop-функционал, но под палец</Text>
+          <Text style={[styles.bannerText, { color: theme.textSecondary }]}>Импортируйте аккаунты batch-списком или добавляйте по одному. Карточки сразу готовы к запуску.</Text>
+        </View>
 
         {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
 
@@ -145,7 +157,7 @@ export default function ProfilesScreen() {
             <ProfileCard
               key={profile.id}
               onDelete={() => handleDelete(profile.id)}
-              onOpen={() => router.push(`/profile/${profile.id}`)}
+              onOpen={() => router.push({ pathname: '/profile/[id]', params: { id: profile.id, hwid } })}
               profile={profile}
               testID={`profile-card-${profile.id}`}
             />
@@ -248,6 +260,20 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  bannerCard: {
+    borderWidth: 1,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  bannerTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  bannerText: {
+    fontSize: 14,
+    lineHeight: 21,
   },
   error: {
     fontSize: 14,

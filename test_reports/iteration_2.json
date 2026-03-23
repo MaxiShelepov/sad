@@ -1,0 +1,95 @@
+{
+  "summary": "Проведены backend pytest регрессии по прокси к реальному api.php и mobile-first UI проверки Expo web. Backend API флоу в целом рабочие (5 passed, 1 skipped), но UI остаётся нестабильным на Profiles/create flow, а backend периодически отдаёт 500 при ошибке внешнего PHP API.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/dashboard?hwid=...",
+        "issue": "Периодические 500 из-за необработанной ошибки внешнего API: requests.exceptions.HTTPError (500 от https://e-vortex.ru/api.php) пробрасывается без graceful handling.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": [
+      {
+        "endpoint": "POST /api/farm/start",
+        "issue": "Для trial/subscription без farm_mode возвращается 403 (ожидаемое поведение, но UI флоу фермы без явного pre-check может выглядеть как поломка)."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Profiles create modal",
+        "issue": "Кнопка сохранения в modal может быть вне viewport/неудобно кликабельной в мобильном web-preview (ошибка automation: element outside viewport).",
+        "testID": "save-profile-button",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Profiles screen loading state",
+        "issue": "Экран Профили часто зависает на spinner после запросов к backend; список карточек не стабилен для дальнейшего перехода в детали.",
+        "testID": "profiles-screen",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "License -> Profiles -> Create profile -> Open detail",
+        "issue": "Из-за нестабильного loading и/или фоновых backend 500 цепочка не проходит стабильно end-to-end в web-preview.",
+        "affected_testIDs": [
+          "open-add-profile-button",
+          "save-profile-button",
+          "profiles-screen",
+          "profile-card-*-open-button"
+        ]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Profiles modal (mobile web preview)",
+        "issues": [
+          "Нижняя CTA может уходить за экран при высоте 667px; ухудшает tappability.",
+          "Нужен более надежный keyboard/scroll handling внутри modal на small-height экранах."
+        ]
+      }
+    ],
+    "react_native_issues": [
+      {
+        "component": "Несколько экранов с shadow props",
+        "issue": "Expo web логирует deprecation: \"shadow* style props are deprecated. Use boxShadow\"."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/conftest.py",
+    "/app/backend/tests/test_mobile_port_core_api.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/ui_iteration2_license.jpeg",
+    "/app/test_reports/ui_iteration2_failure.jpeg",
+    "/app/test_reports/ui_iteration2_profiles_loaded.jpeg",
+    "/app/test_reports/ui_iteration2_retest_failure.jpeg",
+    "/app/test_reports/ui_iteration2_modal_save_retry_fail.jpeg"
+  ],
+  "action_items": [
+    "Добавить обработку ошибок внешнего PHP API (check_hwid/get_profiles и т.д.) с переводом в controlled HTTPException 502/503 вместо 500 traceback.",
+    "Разрулить race/refresh на экране профилей (конкуренция license/dashboard/profiles polling), чтобы убрать вечный spinner.",
+    "Сделать modal создания профиля более mobile-safe: гарантировать доступность save CTA в пределах viewport (scroll/keyboard-safe area).",
+    "Добавить UI pre-check farm_mode перед вызовом farm start и показывать понятное сообщение без ложной поломки."
+  ],
+  "critical_code_review_comments": [
+    "В /app/backend/.env.custom захардкожен реальный VORTEX_API_KEY в репозитории (секрет в открытом виде) — критический security риск.",
+    "В /app/backend/remote_vortex.py есть default fallback URL/API key; для production policy лучше fail-fast без fallback значений для критичных env.",
+    "В /app/frontend/src/api.js есть localhost fallback (127.0.0.1:8001), что противоречит строгому env-only URL policy для клиентских запросов."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_mobile_port_core_api.py",
+    "/app/test_reports/iteration_2.json"
+  ],
+  "success_rate": {
+    "backend": "83% (5 passed, 1 skipped)",
+    "frontend": "45%"
+  },
+  "seed_data_creation": "Создавались TEST_* профили/лицензии в real proxy flow; cleanup выполнялся в тестах.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend proxy основные CRUD/fingerprint/session/warmup флоу проходят. Farm start корректно скипается при trial без farm_mode. Главный блокер сейчас UI стабильность Profiles/create/open в web preview и graceful handling внешних 500 от api.php.",
+  "rca_of_issue": "RCA: backend напрямую пробрасывает исключения requests.raise_for_status()/VortexRemoteError из remote_vortex, из-за чего при временных 500 от e-vortex.ru ломаются /api/dashboard и связанные UI-поллинги. На фронте это проявляется как spinner/нестабильность экрана профилей и невалидный e2e create->open. Repro: открыть app -> перейти в профили -> фоновый polling license/dashboard/profiles -> при upstream error в backend логах появляется traceback и UI деградирует."
+}

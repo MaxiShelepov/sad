@@ -40,18 +40,20 @@ export const api = {
   checkLicense: (hwid) => request('/license/check', { method: 'POST', body: JSON.stringify({ hwid }) }),
   getDashboard: (hwid) => request(`/dashboard?hwid=${encodeURIComponent(hwid)}`),
   getProfiles: (hwid) => request(`/profiles?hwid=${encodeURIComponent(hwid)}`),
-  getProfile: (profileId) => request(`/profiles/${profileId}`),
+  getProfile: (profileId, hwid) => request(`/profiles/${profileId}?hwid=${encodeURIComponent(hwid)}`),
   createProfile: (payload) => request('/profiles', { method: 'POST', body: JSON.stringify(payload) }),
   importProfiles: (payload) => request('/profiles/import', { method: 'POST', body: JSON.stringify(payload) }),
-  updateProfile: (profileId, payload) => request(`/profiles/${profileId}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  updateProfile: (profileId, hwid, payload) =>
+    request(`/profiles/${profileId}?hwid=${encodeURIComponent(hwid)}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteProfile: (profileId, hwid) => request(`/profiles/${profileId}?hwid=${encodeURIComponent(hwid)}`, { method: 'DELETE' }),
-  getFingerprint: (profileId) => request(`/profiles/${profileId}/fingerprint`),
-  updateFingerprint: (profileId, payload) =>
-    request(`/profiles/${profileId}/fingerprint`, { method: 'PUT', body: JSON.stringify(payload) }),
-  randomizeFingerprint: (profileId) => request(`/profiles/${profileId}/fingerprint/randomize`, { method: 'POST' }),
-  getSession: (profileId) => request(`/profiles/${profileId}/session`),
-  updateSession: (profileId, payload) =>
-    request(`/profiles/${profileId}/session`, { method: 'PUT', body: JSON.stringify({ data: payload }) }),
+  getFingerprint: (profileId, hwid) => request(`/profiles/${profileId}/fingerprint?hwid=${encodeURIComponent(hwid)}`),
+  updateFingerprint: (profileId, hwid, payload) =>
+    request(`/profiles/${profileId}/fingerprint?hwid=${encodeURIComponent(hwid)}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  randomizeFingerprint: (profileId, hwid) =>
+    request(`/profiles/${profileId}/fingerprint/randomize?hwid=${encodeURIComponent(hwid)}`, { method: 'POST' }),
+  getSession: (profileId, hwid) => request(`/profiles/${profileId}/session?hwid=${encodeURIComponent(hwid)}`),
+  updateSession: (profileId, hwid, payload) =>
+    request(`/profiles/${profileId}/session?hwid=${encodeURIComponent(hwid)}`, { method: 'PUT', body: JSON.stringify({ data: payload }) }),
   getWarmups: (hwid) => request(`/warmups?hwid=${encodeURIComponent(hwid)}`),
   startWarmup: (payload) => request('/warmups/start', { method: 'POST', body: JSON.stringify(payload) }),
   stopWarmup: (jobId) => request(`/warmups/${jobId}/stop`, { method: 'POST' }),

@@ -13,12 +13,12 @@ export function ProfileCard({ profile, onOpen, onDelete, testID }) {
   return (
     <Animated.View
       entering={FadeInDown.duration(240)}
-      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border, shadowColor: theme.primary, shadowOpacity: 0.12, shadowRadius: 18, shadowOffset: { width: 0, height: 10 }, elevation: 4 }]}
       testID={testID}
     >
       <View style={styles.header}>
         <View style={styles.identityRow}>
-          <View style={[styles.avatar, { backgroundColor: theme.surfaceHighlight, borderColor: theme.border }]}>
+          <View style={[styles.avatar, { backgroundColor: theme.surfaceHighlight, borderColor: theme.primarySoft }]}>
             <Feather color={theme.textPrimary} name="user" size={18} />
           </View>
           <View style={styles.grow}>

@@ -23,8 +23,8 @@ export default function LicenseScreen() {
     <Screen testID="license-screen">
       <View style={styles.hero}>
         <Text style={[styles.kicker, { color: theme.textSecondary }]}>WLESS PRO</Text>
-        <Text style={[styles.title, { color: theme.textPrimary }]}>Мобильный контроль лицензии и профилей</Text>
-        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Android-версия с логикой desktop-приложения.</Text>
+        <Text style={[styles.title, { color: theme.textPrimary }]}>Премиальный мобильный центр управления</Text>
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Лицензия, профили, fingerprint и прогрев — в одном Android-интерфейсе.</Text>
       </View>
 
       <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]} testID="license-card">
@@ -111,6 +111,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     padding: spacing.md,
     gap: spacing.md,
+    shadowColor: '#4EA1FF',
+    shadowOpacity: 0.14,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 6,
   },
   rowBetween: {
     flexDirection: 'row',

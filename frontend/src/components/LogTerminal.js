@@ -31,7 +31,7 @@ export function LogTerminal({ logs = [], testID }) {
 
 const styles = StyleSheet.create({
   terminal: {
-    backgroundColor: '#000000',
+    backgroundColor: '#02040A',
     borderRadius: radii.md,
     borderWidth: 1,
     padding: spacing.md,

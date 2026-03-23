@@ -16,7 +16,7 @@ export function ActionButton({
 
   const toneStyles =
     variant === 'secondary'
-      ? { backgroundColor: theme.surface, borderColor: theme.border, textColor: theme.textPrimary }
+      ? { backgroundColor: theme.surfaceHighlight, borderColor: theme.border, textColor: theme.textPrimary }
       : variant === 'danger'
         ? { backgroundColor: theme.dangerBg, borderColor: theme.danger, textColor: theme.danger }
         : { backgroundColor: theme.primary, borderColor: theme.primary, textColor: theme.textPrimary };
@@ -34,6 +34,11 @@ export function ActionButton({
           backgroundColor: disabled ? theme.surfaceHighlight : toneStyles.backgroundColor,
           borderColor: toneStyles.borderColor,
           opacity: disabled ? 0.5 : 1,
+          shadowColor: variant === 'primary' ? theme.primary : theme.black,
+          shadowOpacity: variant === 'primary' ? 0.28 : 0.08,
+          shadowRadius: variant === 'primary' ? 16 : 8,
+          shadowOffset: { width: 0, height: 8 },
+          elevation: variant === 'primary' ? 8 : 2,
         },
       ]}
       testID={testID}
@@ -67,5 +72,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 15,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });

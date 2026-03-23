@@ -9,7 +9,7 @@ export function StatusPill({ label, tone = 'neutral', testID }) {
       ? { backgroundColor: theme.successBg, color: theme.success, borderColor: theme.success }
       : tone === 'danger'
         ? { backgroundColor: theme.dangerBg, color: theme.danger, borderColor: theme.danger }
-        : { backgroundColor: theme.surfaceHighlight, color: theme.textSecondary, borderColor: theme.border };
+        : { backgroundColor: theme.primarySoft, color: theme.primary, borderColor: theme.primary };
 
   return (
     <View style={[styles.pill, colors]} testID={testID}>
@@ -22,7 +22,7 @@ const styles = StyleSheet.create({
   pill: {
     borderRadius: radii.pill,
     borderWidth: 1,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.md,
     paddingVertical: 6,
     alignSelf: 'flex-start',
   },

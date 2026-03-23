@@ -10,7 +10,7 @@ import { getTheme, radii, spacing } from '../../../src/theme';
 
 export default function FingerprintScreen() {
   const theme = getTheme();
-  const { id } = useLocalSearchParams();
+  const { id, hwid } = useLocalSearchParams();
   const [form, setForm] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -21,7 +21,7 @@ export default function FingerprintScreen() {
 
     async function loadFingerprint() {
       try {
-        const response = await api.getFingerprint(id);
+        const response = await api.getFingerprint(id, hwid);
         if (mounted) {
           setForm(response.fingerprint);
         }
@@ -40,12 +40,12 @@ export default function FingerprintScreen() {
     return () => {
       mounted = false;
     };
-  }, [id]);
+  }, [id, hwid]);
 
   async function saveFingerprint() {
     try {
       setSaving(true);
-      await api.updateFingerprint(id, {
+      await api.updateFingerprint(id, hwid, {
         browser: form.browser,
         browser_version: form.browser_version,
         os_name: form.os_name,
@@ -71,7 +71,7 @@ export default function FingerprintScreen() {
   async function randomizeFingerprint() {
     try {
       setSaving(true);
-      const updated = await api.randomizeFingerprint(id);
+      const updated = await api.randomizeFingerprint(id, hwid);
       setForm(updated.fingerprint);
     } catch (requestError) {
       setError(requestError.message || 'Не удалось обновить отпечаток');
@@ -95,6 +95,11 @@ export default function FingerprintScreen() {
       <ActionButton compact icon="arrow-left" label="Назад" onPress={() => router.back()} testID="fingerprint-back-button" variant="secondary" />
       <Text style={[styles.title, { color: theme.textPrimary }]}>Настройка отпечатка</Text>
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Измените браузер, ОС, экран и GPU под мобильный профиль.</Text>
+
+      <View style={[styles.heroCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[styles.heroTitle, { color: theme.textPrimary }]}>Device identity editor</Text>
+        <Text style={[styles.heroText, { color: theme.textSecondary }]}>Собирайте более правдоподобный мобильный отпечаток и сохраняйте его напрямую в ваш живой PHP/API backend.</Text>
+      </View>
 
       {[
         ['Браузер', 'browser'],
@@ -145,6 +150,20 @@ const styles = StyleSheet.create({
   },
   fieldBlock: {
     gap: 6,
+  },
+  heroCard: {
+    borderWidth: 1,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  heroTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  heroText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   label: {
     fontSize: 12,

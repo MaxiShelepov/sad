@@ -32,6 +32,7 @@ export default function FarmScreen() {
 
   const loadData = useCallback(async () => {
     if (!hwid) {
+      setLoading(false);
       return;
     }
     try {
@@ -52,6 +53,12 @@ export default function FarmScreen() {
       loadData();
     }, [loadData]),
   );
+
+  useEffect(() => {
+    if (hwid) {
+      loadData();
+    }
+  }, [hwid, loadData]);
 
   useEffect(() => {
     const hasActive = jobs.some((job) => ['pending', 'running'].includes(job.status));
@@ -102,7 +109,12 @@ export default function FarmScreen() {
   return (
     <Screen testID="farm-screen">
       <Text style={[styles.title, { color: theme.textPrimary }]}>Ферма</Text>
-      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Выберите несколько профилей и запустите параллельный прогрев.</Text>
+      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>Выберите несколько профилей и запустите параллельный прогрев в одном premium-пульте.</Text>
+
+      <View style={[styles.heroCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <Text style={[styles.heroTitle, { color: theme.textPrimary }]}>Multi-profile control</Text>
+        <Text style={[styles.heroText, { color: theme.textSecondary }]}>Подходит для быстрых запусков: отметьте профили, выберите режим и сразу смотрите логи внизу.</Text>
+      </View>
 
       <View style={styles.actionRow}>
         <View style={styles.actionItem}>
@@ -201,6 +213,20 @@ const styles = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  heroCard: {
+    borderWidth: 1,
+    borderRadius: radii.lg,
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  heroTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+  },
+  heroText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   actionItem: {
     flex: 1,

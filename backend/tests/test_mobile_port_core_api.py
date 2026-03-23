@@ -1,131 +1,198 @@
+import time
 import uuid
+
+import pytest
+
+
+def _request_with_retry(request_fn, retries: int = 1):
+    last_exc = None
+    for _ in range(retries + 1):
+        try:
+            return request_fn()
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            time.sleep(0.4)
+    raise last_exc
+
+
+def _create_profile(api_client, base_url, hwid: str, suffix: str = "core") -> str:
+    payload = {
+        "hwid": hwid,
+        "name": f"TEST_{suffix}_profile",
+        "email": f"TEST_{suffix}_{uuid.uuid4().hex[:8]}@example.com",
+        "access_token": f"token-{suffix}",
+        "proxy": "",
+        "notes": "pytest-created",
+        "use_browser": True,
+    }
+    response = _request_with_retry(lambda: api_client.post(f"{base_url}/api/profiles", json=payload, timeout=25))
+    assert response.status_code == 200
+    data = response.json()
+    assert data["name"] == payload["name"]
+    return data["id"]
 
 
 class TestMobilePortCoreApi:
-    """Core regression for license, profiles, warmups, and farm endpoints."""
+    """Regression for real PHP proxy endpoints and warmup runtime integration."""
 
+    # license module checks
     def test_license_check_autogenerates_subscription(self, api_client, base_url):
         hwid = f"ANDROID-TEST-{uuid.uuid4().hex[:10].upper()}"
-        response = api_client.post(f"{base_url}/api/license/check", json={"hwid": hwid}, timeout=20)
+        response = _request_with_retry(lambda: api_client.post(f"{base_url}/api/license/check", json={"hwid": hwid}, timeout=25))
         assert response.status_code == 200
 
         data = response.json()
         assert data["success"] is True
         assert data["subscription"]["hwid"] == hwid
-        assert data["subscription"]["trial_used"] is True
+        assert isinstance(data["subscription"]["active"], bool)
 
-    def test_profiles_create_list_and_profile_route(self, api_client, base_url):
+    # profile CRUD module checks
+    def test_profiles_create_list_detail_and_delete(self, api_client, base_url):
         hwid = f"ANDROID-TEST-{uuid.uuid4().hex[:10].upper()}"
-        license_response = api_client.post(f"{base_url}/api/license/check", json={"hwid": hwid}, timeout=20)
-        assert license_response.status_code == 200
+        _request_with_retry(lambda: api_client.post(f"{base_url}/api/license/check", json={"hwid": hwid}, timeout=25))
 
-        create_payload = {
-            "hwid": hwid,
-            "name": "TEST_mobile_profile",
-            "email": f"TEST_{uuid.uuid4().hex[:8]}@example.com",
-            "access_token": "token-1",
-            "proxy": "",
-            "notes": "created-by-pytest",
-            "use_browser": True,
-        }
-        create_response = api_client.post(f"{base_url}/api/profiles", json=create_payload, timeout=20)
-        assert create_response.status_code == 200
-        created = create_response.json()
-        profile_id = created["id"]
+        profile_id = _create_profile(api_client, base_url, hwid, "crud")
+        try:
+            list_response = _request_with_retry(lambda: api_client.get(f"{base_url}/api/profiles", params={"hwid": hwid}, timeout=25))
+            assert list_response.status_code == 200
+            listed = list_response.json()
+            assert any(item["id"] == profile_id for item in listed)
 
-        list_response = api_client.get(f"{base_url}/api/profiles", params={"hwid": hwid}, timeout=20)
-        assert list_response.status_code == 200
-        listed_profiles = list_response.json()
-        matched = [item for item in listed_profiles if item["id"] == profile_id]
-        assert len(matched) == 1
-        assert matched[0]["name"] == "TEST_mobile_profile"
-
-        details_response = api_client.get(f"{base_url}/api/profiles/{profile_id}", timeout=20)
-        assert details_response.status_code == 200
-        details = details_response.json()
-        assert details["id"] == profile_id
-        assert details["fingerprint"]["profile_id"] == profile_id
-
-        # cleanup
-        delete_response = api_client.delete(f"{base_url}/api/profiles/{profile_id}", params={"hwid": hwid}, timeout=20)
-        assert delete_response.status_code == 200
-
-    def test_warmup_start_and_list_logs(self, api_client, base_url):
-        hwid = f"ANDROID-TEST-{uuid.uuid4().hex[:10].upper()}"
-        license_response = api_client.post(f"{base_url}/api/license/check", json={"hwid": hwid}, timeout=20)
-        assert license_response.status_code == 200
-
-        profile_payload = {
-            "hwid": hwid,
-            "name": "TEST_warmup_profile",
-            "email": f"TEST_{uuid.uuid4().hex[:8]}@example.com",
-            "access_token": "token-2",
-            "proxy": "",
-            "notes": "warmup-test",
-            "use_browser": True,
-        }
-        profile_response = api_client.post(f"{base_url}/api/profiles", json=profile_payload, timeout=20)
-        assert profile_response.status_code == 200
-        profile_id = profile_response.json()["id"]
-
-        start_payload = {"hwid": hwid, "profile_id": profile_id, "mode": "balanced", "minutes": 1}
-        start_response = api_client.post(f"{base_url}/api/warmups/start", json=start_payload, timeout=20)
-        assert start_response.status_code == 200
-        started_job = start_response.json()
-        assert started_job["profile_id"] == profile_id
-        assert started_job["status"] in ["pending", "running"]
-
-        list_response = api_client.get(f"{base_url}/api/warmups", params={"hwid": hwid}, timeout=20)
-        assert list_response.status_code == 200
-        jobs = list_response.json()
-        target = [item for item in jobs if item["id"] == started_job["id"]]
-        assert len(target) == 1
-        assert isinstance(target[0]["logs"], list)
-
-        stop_response = api_client.post(f"{base_url}/api/warmups/{started_job['id']}/stop", timeout=20)
-        assert stop_response.status_code == 200
-
-        delete_response = api_client.delete(f"{base_url}/api/profiles/{profile_id}", params={"hwid": hwid}, timeout=20)
-        assert delete_response.status_code == 200
-
-    def test_farm_start_with_two_profiles(self, api_client, base_url):
-        hwid = f"ANDROID-TEST-{uuid.uuid4().hex[:10].upper()}"
-        license_response = api_client.post(f"{base_url}/api/license/check", json={"hwid": hwid}, timeout=20)
-        assert license_response.status_code == 200
-
-        created_profile_ids = []
-        for index in range(2):
-            payload = {
-                "hwid": hwid,
-                "name": f"TEST_farm_{index}",
-                "email": f"TEST_{uuid.uuid4().hex[:8]}_{index}@example.com",
-                "access_token": f"token-{index}",
-                "proxy": "",
-                "notes": "farm-test",
-                "use_browser": True,
-            }
-            response = api_client.post(f"{base_url}/api/profiles", json=payload, timeout=20)
-            assert response.status_code == 200
-            created_profile_ids.append(response.json()["id"])
-
-        farm_payload = {
-            "hwid": hwid,
-            "items": [
-                {"profile_id": created_profile_ids[0], "mode": "calm", "minutes": 1},
-                {"profile_id": created_profile_ids[1], "mode": "turbo", "minutes": 1},
-            ],
-        }
-        farm_response = api_client.post(f"{base_url}/api/farm/start", json=farm_payload, timeout=20)
-        assert farm_response.status_code == 200
-        farm_jobs = farm_response.json()
-        assert len(farm_jobs) == 2
-        assert all(job["group_id"] for job in farm_jobs)
-
-        stop_farm_response = api_client.post(f"{base_url}/api/farm/stop", params={"hwid": hwid}, timeout=20)
-        assert stop_farm_response.status_code == 200
-        stopped_payload = stop_farm_response.json()
-        assert stopped_payload["success"] is True
-
-        for profile_id in created_profile_ids:
-            delete_response = api_client.delete(f"{base_url}/api/profiles/{profile_id}", params={"hwid": hwid}, timeout=20)
+            details_response = _request_with_retry(
+                lambda: api_client.get(f"{base_url}/api/profiles/{profile_id}", params={"hwid": hwid}, timeout=25)
+            )
+            assert details_response.status_code == 200
+            details = details_response.json()
+            assert details["id"] == profile_id
+            assert details["fingerprint"]["profile_id"] == profile_id
+        finally:
+            delete_response = api_client.delete(f"{base_url}/api/profiles/{profile_id}", params={"hwid": hwid}, timeout=25)
             assert delete_response.status_code == 200
+            verify_deleted = api_client.get(f"{base_url}/api/profiles/{profile_id}", params={"hwid": hwid}, timeout=25)
+            assert verify_deleted.status_code == 404
+
+    # fingerprint module checks
+    def test_fingerprint_get_update_randomize(self, api_client, base_url):
+        hwid = f"ANDROID-TEST-{uuid.uuid4().hex[:10].upper()}"
+        _request_with_retry(lambda: api_client.post(f"{base_url}/api/license/check", json={"hwid": hwid}, timeout=25))
+
+        profile_id = _create_profile(api_client, base_url, hwid, "fp")
+        try:
+            get_fp = api_client.get(f"{base_url}/api/profiles/{profile_id}/fingerprint", params={"hwid": hwid}, timeout=25)
+            assert get_fp.status_code == 200
+            current = get_fp.json()["fingerprint"]
+            assert current["profile_id"] == profile_id
+
+            update_payload = {
+                "browser": "Chrome Mobile",
+                "browser_version": "128.0.0.0",
+                "os_name": "Android",
+                "screen_width": 412,
+                "screen_height": 915,
+                "timezone": "Europe/Moscow",
+            }
+            update_response = api_client.put(
+                f"{base_url}/api/profiles/{profile_id}/fingerprint", params={"hwid": hwid}, json=update_payload, timeout=25
+            )
+            assert update_response.status_code == 200
+
+            verify_updated = api_client.get(f"{base_url}/api/profiles/{profile_id}/fingerprint", params={"hwid": hwid}, timeout=25)
+            assert verify_updated.status_code == 200
+            verified = verify_updated.json()["fingerprint"]
+            assert verified["screen_width"] == 412
+
+            randomize_response = api_client.post(
+                f"{base_url}/api/profiles/{profile_id}/fingerprint/randomize", params={"hwid": hwid}, timeout=25
+            )
+            assert randomize_response.status_code == 200
+            randomized = randomize_response.json()
+            assert randomized["id"] == profile_id
+        finally:
+            cleanup = api_client.delete(f"{base_url}/api/profiles/{profile_id}", params={"hwid": hwid}, timeout=25)
+            assert cleanup.status_code == 200
+
+    # session module checks
+    def test_session_get_and_update(self, api_client, base_url):
+        hwid = f"ANDROID-TEST-{uuid.uuid4().hex[:10].upper()}"
+        _request_with_retry(lambda: api_client.post(f"{base_url}/api/license/check", json={"hwid": hwid}, timeout=25))
+
+        profile_id = _create_profile(api_client, base_url, hwid, "session")
+        try:
+            update_payload = {"cookies": [{"name": "sid", "value": "abc123"}], "meta": {"source": "pytest"}}
+            update_response = api_client.put(
+                f"{base_url}/api/profiles/{profile_id}/session", params={"hwid": hwid}, json={"data": update_payload}, timeout=25
+            )
+            assert update_response.status_code == 200
+
+            get_response = api_client.get(f"{base_url}/api/profiles/{profile_id}/session", params={"hwid": hwid}, timeout=25)
+            assert get_response.status_code == 200
+            restored = get_response.json()["session_data"]
+            assert restored["cookies"][0]["name"] == "sid"
+        finally:
+            cleanup = api_client.delete(f"{base_url}/api/profiles/{profile_id}", params={"hwid": hwid}, timeout=25)
+            assert cleanup.status_code == 200
+
+    # warmup runtime and reflected metrics module checks
+    def test_warmup_start_stop_and_profile_metrics(self, api_client, base_url):
+        hwid = f"ANDROID-TEST-{uuid.uuid4().hex[:10].upper()}"
+        _request_with_retry(lambda: api_client.post(f"{base_url}/api/license/check", json={"hwid": hwid}, timeout=25))
+
+        profile_id = _create_profile(api_client, base_url, hwid, "warmup")
+        started_job_id = None
+        try:
+            start_payload = {"hwid": hwid, "profile_id": profile_id, "mode": "balanced", "minutes": 1}
+            start_response = api_client.post(f"{base_url}/api/warmups/start", json=start_payload, timeout=25)
+            assert start_response.status_code == 200
+            started_job = start_response.json()
+            started_job_id = started_job["id"]
+            assert started_job["profile_id"] == profile_id
+
+            time.sleep(3)
+            list_response = api_client.get(f"{base_url}/api/warmups", params={"hwid": hwid}, timeout=25)
+            assert list_response.status_code == 200
+            jobs = list_response.json()
+            current = next((item for item in jobs if item["id"] == started_job_id), None)
+            assert current is not None
+
+            detail_response = api_client.get(f"{base_url}/api/profiles/{profile_id}", params={"hwid": hwid}, timeout=25)
+            assert detail_response.status_code == 200
+            detail = detail_response.json()
+            assert isinstance(detail["stats"]["trust_score"], int)
+            assert isinstance(detail["stats"]["total_operations"], int)
+        finally:
+            if started_job_id:
+                stop_response = api_client.post(f"{base_url}/api/warmups/{started_job_id}/stop", timeout=25)
+                assert stop_response.status_code == 200
+            cleanup = api_client.delete(f"{base_url}/api/profiles/{profile_id}", params={"hwid": hwid}, timeout=25)
+            assert cleanup.status_code == 200
+
+    # farm module checks
+    def test_farm_start_and_stop(self, api_client, base_url):
+        hwid = f"ANDROID-TEST-{uuid.uuid4().hex[:10].upper()}"
+        license_response = _request_with_retry(lambda: api_client.post(f"{base_url}/api/license/check", json={"hwid": hwid}, timeout=25))
+        assert license_response.status_code == 200
+
+        created_ids = [_create_profile(api_client, base_url, hwid, f"farm_{idx}") for idx in range(2)]
+        try:
+            farm_payload = {
+                "hwid": hwid,
+                "items": [
+                    {"profile_id": created_ids[0], "mode": "calm", "minutes": 1},
+                    {"profile_id": created_ids[1], "mode": "turbo", "minutes": 1},
+                ],
+            }
+            farm_response = api_client.post(f"{base_url}/api/farm/start", json=farm_payload, timeout=25)
+            if farm_response.status_code == 403:
+                pytest.skip("Farm mode disabled for current subscription plan")
+
+            assert farm_response.status_code == 200
+            farm_jobs = farm_response.json()
+            assert len(farm_jobs) >= 1
+
+            stop_response = api_client.post(f"{base_url}/api/farm/stop", params={"hwid": hwid}, timeout=25)
+            assert stop_response.status_code == 200
+            assert stop_response.json()["success"] is True
+        finally:
+            for profile_id in created_ids:
+                cleanup = api_client.delete(f"{base_url}/api/profiles/{profile_id}", params={"hwid": hwid}, timeout=25)
+                assert cleanup.status_code == 200

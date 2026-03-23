@@ -19,7 +19,7 @@ const MODES = [
 
 export default function ProfileDetailsScreen() {
   const theme = getTheme();
-  const { id } = useLocalSearchParams();
+  const { id, hwid: routeHwid } = useLocalSearchParams();
   const { hwid } = useAppState();
   const [profile, setProfile] = useState(null);
   const [jobs, setJobs] = useState([]);
@@ -38,8 +38,9 @@ export default function ProfileDetailsScreen() {
 
     try {
       setLoading(true);
-      const profileData = await api.getProfile(id);
-      const warmupsData = await api.getWarmups(profileData.hwid || hwid);
+      const targetHwid = routeHwid || hwid;
+      const profileData = await api.getProfile(id, targetHwid);
+      const warmupsData = await api.getWarmups(profileData.hwid || targetHwid);
       setProfile(profileData);
       setJobs(warmupsData.filter((item) => item.profile_id === id));
       setError('');
@@ -48,7 +49,7 @@ export default function ProfileDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  }, [hwid, id]);
+  }, [hwid, id, routeHwid]);
 
   useFocusEffect(
     useCallback(() => {
@@ -68,7 +69,7 @@ export default function ProfileDetailsScreen() {
   }, [activeJob, loadData]);
 
   async function startWarmup() {
-    const targetHwid = profile?.hwid || hwid;
+    const targetHwid = profile?.hwid || routeHwid || hwid;
     try {
       setPending(true);
       await api.startWarmup({ hwid: targetHwid, profile_id: id, mode, minutes: Number(minutes) || 15 });
@@ -136,6 +137,11 @@ export default function ProfileDetailsScreen() {
           {profile.proxy || 'Без прокси'} · {profile.fingerprint.browser} · {profile.fingerprint.os_name}
         </Text>
 
+        <View style={[styles.heroInfo, { backgroundColor: theme.surfaceHighlight, borderColor: theme.border }]}>
+          <Text style={[styles.heroInfoTitle, { color: theme.textPrimary }]}>Profile cockpit</Text>
+          <Text style={[styles.heroInfoText, { color: theme.textSecondary }]}>Запускайте прогрев, следите за trust score и мгновенно переходите к настройке fingerprint.</Text>
+        </View>
+
         <View style={styles.statsRow}>
           <StatCard label="Trust" value={profile.stats.trust_score} accent="primary" testID="profile-trust-card" />
           <StatCard label="Операций" value={profile.stats.total_operations} accent="success" testID="profile-operations-card" />
@@ -193,7 +199,7 @@ export default function ProfileDetailsScreen() {
             compact
             icon="sliders"
             label="Изменить"
-            onPress={() => router.push(`/profile/${id}/fingerprint`)}
+              onPress={() => router.push({ pathname: '/profile/[id]/fingerprint', params: { id, hwid: profile?.hwid || routeHwid || hwid } })}
             testID="edit-fingerprint-button"
             variant="secondary"
           />
@@ -248,6 +254,20 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     gap: spacing.sm,
+  },
+  heroInfo: {
+    borderWidth: 1,
+    borderRadius: radii.md,
+    padding: spacing.md,
+    gap: spacing.xs,
+  },
+  heroInfoTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  heroInfoText: {
+    fontSize: 14,
+    lineHeight: 20,
   },
   sectionTitle: {
     fontSize: 20,
