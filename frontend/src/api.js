@@ -1,9 +1,6 @@
 import { API_BASE_URL } from './config';
 
 function getCandidateUrls() {
-  if (typeof window !== 'undefined' && window.location.hostname === '127.0.0.1') {
-    return ['http://127.0.0.1:8001/api', API_BASE_URL].filter(Boolean);
-  }
   return [API_BASE_URL].filter(Boolean);
 }
 
@@ -21,7 +18,12 @@ async function request(path, options = {}) {
       });
 
       const text = await response.text();
-      const data = text ? JSON.parse(text) : {};
+      let data = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        data = { detail: text || 'Некорректный ответ сервера' };
+      }
 
       if (!response.ok) {
         throw new Error(data.detail || data.message || 'Ошибка запроса к серверу');

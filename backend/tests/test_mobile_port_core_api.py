@@ -46,6 +46,24 @@ class TestMobilePortCoreApi:
         assert data["subscription"]["hwid"] == hwid
         assert isinstance(data["subscription"]["active"], bool)
 
+    # dashboard proxy stability and controlled upstream error handling checks
+    def test_dashboard_repeated_calls_do_not_return_traceback_500(self, api_client, base_url):
+        hwid = f"ANDROID-TEST-{uuid.uuid4().hex[:10].upper()}"
+        _request_with_retry(lambda: api_client.post(f"{base_url}/api/license/check", json={"hwid": hwid}, timeout=25))
+
+        for _ in range(5):
+            response = api_client.get(f"{base_url}/api/dashboard", params={"hwid": hwid}, timeout=25)
+            assert response.status_code in {200, 502}
+            data = response.json()
+
+            if response.status_code == 200:
+                assert isinstance(data.get("profiles_total"), int)
+                assert isinstance(data.get("profiles_running"), int)
+                assert isinstance(data.get("active_jobs"), int)
+            else:
+                assert data.get("success") is False
+                assert isinstance(data.get("detail"), str)
+
     # profile CRUD module checks
     def test_profiles_create_list_detail_and_delete(self, api_client, base_url):
         hwid = f"ANDROID-TEST-{uuid.uuid4().hex[:10].upper()}"

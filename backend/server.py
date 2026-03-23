@@ -4,6 +4,7 @@ import uuid
 from contextlib import asynccontextmanager
 
 from fastapi import APIRouter, FastAPI, HTTPException, Query
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -40,6 +41,7 @@ from repository import (
     update_profile,
     update_session_data,
 )
+from remote_vortex import VortexRemoteError
 from warmup_engine import create_job, launch_job, request_stop, reset_running_jobs, stop_all_for_hwid
 
 
@@ -62,6 +64,17 @@ async def lifespan(_: FastAPI):
 
 # Create the main app without a prefix
 app = FastAPI(lifespan=lifespan)
+
+
+@app.exception_handler(VortexRemoteError)
+async def vortex_remote_error_handler(_, exc: VortexRemoteError):
+    return JSONResponse(
+        status_code=502,
+        content={
+            'success': False,
+            'detail': str(exc),
+        },
+    )
 
 # Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")

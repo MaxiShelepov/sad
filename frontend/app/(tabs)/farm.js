@@ -14,7 +14,7 @@ const MODES = ['calm', 'balanced', 'turbo'];
 
 export default function FarmScreen() {
   const theme = getTheme();
-  const { hwid } = useAppState();
+  const { hwid, subscription } = useAppState();
   const [profiles, setProfiles] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [selected, setSelected] = useState({});
@@ -122,7 +122,7 @@ export default function FarmScreen() {
             icon="play"
             label={busy ? 'Запуск...' : `Запустить (${selectedItems.length})`}
             onPress={startFarm}
-            disabled={busy || selectedItems.length === 0}
+            disabled={busy || selectedItems.length === 0 || !subscription?.farm_mode}
             testID="start-farm-button"
           />
         </View>
@@ -130,6 +130,10 @@ export default function FarmScreen() {
           <ActionButton icon="square" label="Стоп всем" onPress={stopFarm} disabled={busy} testID="stop-farm-button" variant="danger" />
         </View>
       </View>
+
+      {!subscription?.farm_mode ? (
+        <Text style={[styles.notice, { color: theme.warning }]}>На текущем trial-плане режим фермы может быть недоступен до активации полной лицензии админом.</Text>
+      ) : null}
 
       {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
 
@@ -234,6 +238,10 @@ const styles = StyleSheet.create({
   error: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  notice: {
+    fontSize: 13,
+    lineHeight: 20,
   },
   centered: {
     paddingVertical: spacing.xl,

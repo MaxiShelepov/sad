@@ -1,0 +1,97 @@
+{
+  "summary": "Проведены backend pytest (real api.php через proxy) и mobile-first UI проверки Expo web. Backend критические флоу стабильны (6 passed, 1 skipped), farm precheck UX работает, но на UI остаются нестабильности в profiles open-flow и отражении warmup/fingerprint save в detail-флоу.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Profiles create/open flow",
+        "issue": "После создания профиля open-flow нестабилен: в одном прогоне кнопки открытия отсутствовали (count=0) и экран оставался в состоянии загрузки/ресинха, в другом переход в детали по open-button не подтвердился в timeout.",
+        "testID": "profile-card-*-open-button",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Profile details warmup metrics block",
+        "issue": "После старта прогрева в profile detail не появились warmup-opm-card/warmup-progress-card за окно ожидания, хотя backend зафиксировал 200 на /api/warmups/start и последующие /api/warmups GET.",
+        "testID": "warmup-opm-card",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Fingerprint save CTA",
+        "issue": "После randomize клик по save-fingerprint-button не привел к ожидаемому возврату на profile-details-screen; в backend логе не наблюдался PUT fingerprint для этого прогона.",
+        "testID": "save-fingerprint-button",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Profiles -> Open profile detail",
+        "issue": "Связка списка профилей и навигации в detail остается нестабильной в web-preview (колебание count карточек/кнопок между прогонами).",
+        "affected_testIDs": [
+          "profiles-screen",
+          "profile-card-*-open-button"
+        ]
+      },
+      {
+        "flow": "Profile detail -> Start warmup -> Runtime metrics",
+        "issue": "Backend warmup запускается, но UI-метрики прогрева не подтверждены на экране деталей в том же прогоне.",
+        "affected_testIDs": [
+          "start-warmup-button",
+          "warmup-opm-card",
+          "warmup-progress-card"
+        ]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Profiles modal (375x667)",
+        "issues": [
+          "Save CTA может уходить ниже fold на малой высоте; без дополнительного скролла взаимодействие с кнопкой ненадежно."
+        ]
+      }
+    ],
+    "react_native_issues": [
+      {
+        "component": "ActionButton/ProfileCard and other cards",
+        "issue": "В web-консоли постоянно warning: \"shadow* style props are deprecated. Use boxShadow\"."
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/conftest.py",
+    "/app/backend/tests/test_mobile_port_core_api.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/ui_iteration3_load_failure.jpeg",
+    "/app/test_reports/ui_iteration3_license.jpeg",
+    "/app/test_reports/ui_iteration3_farm_precheck.jpeg",
+    "/app/test_reports/ui_iteration3_modal_retry3.jpeg",
+    "/app/test_reports/ui_iteration3_open_retry_exception.jpeg",
+    "/app/test_reports/ui_iteration3_profile_direct.jpeg"
+  ],
+  "action_items": [
+    "Стабилизировать profiles list/open flow: проверить гонки loadProfiles/useFocusEffect/refreshAll и исчезновение карточек между рендерами.",
+    "Проверить обновление UI metrics в profile detail после /warmups/start (activeJob filter/polling/render path).",
+    "Проверить обработчик save-fingerprint-button в mobile web (достижимость CTA, onPress firing, успешный PUT + router.back).",
+    "Устранить mobile UX риск с save CTA в modal при 375x667 без ручного скролла."
+  ],
+  "critical_code_review_comments": [
+    "В /app/backend/remote_vortex.py остается fallback API key, собранный в коде (секрет не должен жить в репозитории; нужен strict env-only fail-fast).",
+    "В /app/frontend/src/config.js используется EXPO_PUBLIC_BACKEND_URL; проверьте соответствие policy env-ключу из frontend/.env и единообразие с требованиями EXPO_BACKEND_URL.",
+    "Логи Expo показывают периодические ngrok tunnel сбои (timeout/TypeError), что добавляет нестабильность внешнему preview при UI валидации."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_mobile_port_core_api.py",
+    "/app/test_reports/iteration_3.json"
+  ],
+  "success_rate": {
+    "backend": "100% critical paths (6 passed, 1 skipped farm plan-gated)",
+    "frontend": "60%"
+  },
+  "seed_data_creation": "Созданы временные TEST_* профили через API/браузерный setup для UI/интеграции, cleanup выполнен для direct-route профиля.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Farm precheck UX подтвержден (trial notice + disabled start). Backend fingerprint/session/warmup endpoints работают в pytest. Основные UI блокеры: нестабильный profiles->open, неотраженные warmup metrics в detail, и неподтвержденный save fingerprint возврат.",
+  "rca_of_issue": "RCA (рабочая гипотеза): 1) на Profiles есть гонка между useFocusEffect/loadProfiles и refreshAll polling, из-за чего count карточек/кнопок дергается и open-flow нестабилен; 2) в detail после startWarmup данные warmups приходят, но activeJob/metrics не всегда попадают в видимый render-state; 3) CTA внутри длинных mobile форм (modal/fingerprint) частично уходит за fold, что снижает надежность onPress в web-preview."
+}

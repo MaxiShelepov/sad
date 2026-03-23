@@ -11,15 +11,17 @@
 
 ## Architecture
 - Frontend: Expo Router + React Native (mobile-first Android UI, tabs + stack)
-- Backend: FastAPI
-- Database: MongoDB
-- State: AsyncStorage для локального HWID, backend для подписки/профилей/задач
+- Backend: FastAPI proxy / adapter
+- Runtime Storage: MongoDB только для локальных warmup jobs и логов runtime
+- Source of truth for user data: существующий PHP API `https://e-vortex.ru/api.php` и его MySQL-backed backend на стороне сервера пользователя
+- State: AsyncStorage для локального HWID, backend для проксирования лицензий/профилей/fingerprint/session/warmup runtime
 - Main backend modules:
   - `server.py` — API маршруты
   - `models.py` — Pydantic схемы
-  - `repository.py` — работа с MongoDB и подписками/профилями
+  - `remote_vortex.py` — интеграция с живым PHP API
+  - `repository.py` — нормализация remote данных и сборка mobile response-моделей
   - `fingerprints.py` — генерация и обновление browser fingerprint
-  - `warmup_engine.py` — фоновые задачи прогрева и логи
+  - `warmup_engine.py` — фоновые задачи прогрева, логи и запись операций обратно в PHP API
 
 ## Core Requirements (Static)
 - Проверка лицензии по HWID
@@ -46,16 +48,23 @@
 - Добавлены локальное хранение HWID, copy-to-clipboard, адаптация под Android layout
 - Проведены backend curl тесты, локальные screenshot-проверки UI и прогон testing agent
 - Исправлена проблема цепочки `Профили -> создать профиль -> открыть детали`, список теперь обновляется оптимистично без блокирующего spinner
+- Backend переведён с локальной схемы на реальный `e-vortex.ru/api.php`: лицензии, профили, fingerprint, session и stats теперь идут через живой PHP API
+- Ключ API оставлен только на backend-стороне; frontend его не получает
+- Добавлена обработка upstream-ошибок PHP API через контролируемый 502 вместо traceback 500
+- UI полностью переработан в более premium mobile-стиле: deep dark фон, неоновые акценты, стеклянные карточки, плавающий tab bar, более дорогой визуальный ритм
+- Добавлена явная UX-подсказка по недоступности farm-режима на trial-подписке
 
 ## Prioritized Backlog
 
 ### P0
 - Дополнительно мониторить стабильность внешнего preview-туннеля при публичной проверке
+- Добить полностью стабильный web-preview flow `Profiles -> Create -> Open -> Warmup` при сетевой нестабильности внешнего tunnel
 
 ### P1
 - Расширить редактирование профиля (не только создание/удаление)
 - Добавить более глубокие метрики прогрева и историю операций по каждому профилю
 - Добавить тонкую настройку batch import форматов
+- Синхронизировать last action профиля ещё точнее с runtime job metrics
 
 ### P2
 - Улучшить UI логов: фильтры уровней, автоскролл, пауза лога
@@ -66,3 +75,4 @@
 - Повторно прогнать полный публичный preview E2E, когда внешний tunnel стабилен
 - Добавить редактирование существующего профиля из карточки
 - Расширить настройки fingerprint дополнительными пресетами Android/iOS
+- Довести сохранение профиля в modal до идеально предсказуемого UX на всех viewport

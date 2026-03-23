@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -171,7 +172,7 @@ export default function ProfilesScreen() {
 
       <SheetModal testID="profile-sheet-modal" title="Новый профиль" visible={modalVisible} onClose={() => setModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <View style={styles.formGroup}>
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={styles.formGroup}>
             <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>Имя профиля</Text>
             <TextInput
               onChangeText={(value) => setForm((current) => ({ ...current, name: value }))}
@@ -238,7 +239,7 @@ export default function ProfilesScreen() {
               onPress={handleCreateOrImport}
               testID="save-profile-button"
             />
-          </View>
+          </ScrollView>
         </KeyboardAvoidingView>
       </SheetModal>
     </>
