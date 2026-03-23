@@ -1,0 +1,158 @@
+{
+  "theme": "dark",
+  "archetype": "Swiss & High-Contrast (Tech Dashboard / Command Center)",
+  "typography": {
+    "fontFamily": "Platform.select({ ios: 'System', android: 'sans-serif' })",
+    "fontFamilyMono": "Platform.select({ ios: 'Menlo', android: 'monospace' })",
+    "scales": {
+      "h1": { "fontSize": 32, "fontWeight": "800", "letterSpacing": -1 },
+      "h2": { "fontSize": 24, "fontWeight": "700", "letterSpacing": -0.5 },
+      "h3": { "fontSize": 20, "fontWeight": "600" },
+      "bodyLarge": { "fontSize": 18, "fontWeight": "500" },
+      "body": { "fontSize": 16, "fontWeight": "400", "lineHeight": 24 },
+      "bodySmall": { "fontSize": 14, "fontWeight": "400" },
+      "label": { "fontSize": 12, "fontWeight": "600", "letterSpacing": 1, "textTransform": "uppercase" },
+      "mono": { "fontSize": 12, "fontWeight": "500", "fontFamily": "mono" }
+    }
+  },
+  "colors": {
+    "dark": {
+      "background": "#09090B",
+      "surface": "#18181B",
+      "surfaceHighlight": "#27272A",
+      "border": "#27272A",
+      "borderFocus": "#3F3F46",
+      "textPrimary": "#FAFAFA",
+      "textSecondary": "#A1A1AA",
+      "primary": "#3B82F6",
+      "primaryActive": "#2563EB",
+      "success": "#10B981",
+      "successBg": "rgba(16, 185, 129, 0.1)",
+      "danger": "#EF4444",
+      "dangerBg": "rgba(239, 68, 68, 0.1)",
+      "warning": "#F59E0B"
+    },
+    "light": {
+      "background": "#FAFAFA",
+      "surface": "#FFFFFF",
+      "surfaceHighlight": "#F4F4F5",
+      "border": "#E4E4E7",
+      "borderFocus": "#D4D4D8",
+      "textPrimary": "#09090B",
+      "textSecondary": "#71717A",
+      "primary": "#2563EB",
+      "primaryActive": "#1D4ED8",
+      "success": "#059669",
+      "successBg": "rgba(5, 150, 105, 0.1)",
+      "danger": "#DC2626",
+      "dangerBg": "rgba(220, 38, 38, 0.1)",
+      "warning": "#D97706"
+    }
+  },
+  "visual_enhancers": {
+    "borders": {
+      "radius": {
+        "sm": 4,
+        "md": 8,
+        "lg": 12,
+        "pill": 9999
+      },
+      "width": {
+        "default": 1,
+        "thick": 2
+      }
+    },
+    "shadows": {
+      "sm": {
+        "shadowColor": "#000",
+        "shadowOffset": { "width": 0, "height": 1 },
+        "shadowOpacity": 0.05,
+        "shadowRadius": 2,
+        "elevation": 1
+      },
+      "md": {
+        "shadowColor": "#000",
+        "shadowOffset": { "width": 0, "height": 4 },
+        "shadowOpacity": 0.1,
+        "shadowRadius": 6,
+        "elevation": 3
+      }
+    },
+    "opacity": {
+      "active": 0.7,
+      "disabled": 0.5
+    }
+  },
+  "grids_layouts": {
+    "spacing": {
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 24,
+      "xl": 32,
+      "xxl": 48
+    },
+    "safeArea": "Always use useSafeAreaInsets from react-native-safe-area-context for screens to prevent content overlapping notches and home indicators.",
+    "patterns": {
+      "screenContainer": "flex: 1, backgroundColor: theme.background",
+      "contentPadding": "paddingHorizontal: 16",
+      "rowBetween": "flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'",
+      "rowCenter": "flexDirection: 'row', justifyContent: 'center', alignItems: 'center'",
+      "card": "backgroundColor: theme.surface, borderRadius: 8, padding: 16, borderWidth: 1, borderColor: theme.border",
+      "denseList": "Use FlatList with ItemSeparatorComponent (1px border height). Remove heavy cards for high density."
+    }
+  },
+  "components": {
+    "button": "Min height 48px for tap targets. Pill or rounded-md (8px). Use TouchableOpacity with activeOpacity={0.7}. Add icons from @expo/vector-icons. Do not use generic text - use bold text.",
+    "input": "Height 48px. 1px solid border. paddingHorizontal 16. Focus state must change border color to Primary.",
+    "switch": "Standard RN Switch with trackColor={{ false: theme.border, true: theme.primary }}",
+    "listItem": "Height min 64px. Flex row. Left: Avatar/Icon, Center: Title + Subtitle, Right: Status indicator or Action. Symmetric spacing.",
+    "logsTerminal": "ScrollView inside a View with backgroundColor: '#000' (even in light theme for terminal feel). Monospace font, color success/danger/warning/primary for specific log levels. padding: 12.",
+    "bottomTabs": "Height 60px + safe area bottom. Minimalist icons (Ionicons or Feather). No background transparency, pure solid surface color."
+  },
+  "motion": {
+    "transitions": "Use react-native-reanimated for smooth layout transitions (e.g. Layout.duration(200).springify() for list items).",
+    "interactions": "Provide haptic feedback for critical actions using expo-haptics (e.g., starting farm, saving fingerprint, license error)."
+  },
+  "accessibility": {
+    "testIDs": "CRITICAL: All interactive and key informational elements MUST include a testID attribute (React Native equivalent of data-testid). Use kebab-case role-based names (e.g., testID='login-submit-button').",
+    "tapTargets": "Min 48x48. Wrap small icons in View with hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} if visual size must be smaller.",
+    "roles": "Use accessibilityRole='button' for TouchableOpacity."
+  },
+  "navigation": {
+    "pattern": "Expo Router File-based navigation. (Stack + Tabs).",
+    "structure": {
+      "app/_layout.js": "Root Layout with Theme Provider",
+      "app/(tabs)/_layout.js": "Bottom Tabs Layout",
+      "app/(tabs)/index.js": "License / HWID screen",
+      "app/(tabs)/profiles.js": "Profile List",
+      "app/(tabs)/farm.js": "Farm Setup & Multi-profile warmup",
+      "app/profile/[id].js": "Profile Details & Single Warmup (Stack)",
+      "app/profile/[id]/fingerprint.js": "Fingerprint Setup (Stack)"
+    }
+  },
+  "instructions_to_main_agent": [
+    "Build the Android mobile app using React Native elements and Expo Router.",
+    "Use standard StyleSheet.create for all styling. DO NOT use Tailwind CSS or web HTML tags (div, span).",
+    "CRITICAL: Create files as .js or .jsx exclusively unless a .tsx file already exists and must be modified.",
+    "Maintain the density and functionality of the desktop application (HWID license check, single/multi profile warmup, fingerprint configuration, proxy settings).",
+    "Utilize dark/light theme logic using React Native's useColorScheme.",
+    "For logs and terminal outputs, use purely monospace fonts, dark backgrounds, and distinct colors for log levels (green for success, red for error, yellow for warning).",
+    "All tap targets must be minimum 48px or utilize hitSlop.",
+    "Use @expo/vector-icons (Feather, Ionicons) for all iconography.",
+    "Use react-native-reanimated for layout animations (e.g., list item insertion/deletion).",
+    "Never use generic default alerts; build customized modal components or inline error states.",
+    "Make sure to map desktop structures from Python (ui.py, fingerprint.py) to a clean React Native mobile interface."
+  ],
+  "UNIVERSAL_GUIDELINES_FOR_MAIN_AGENT": [
+    "Do not converge toward generic outputs. Design a unique, high-contrast, professional tech interface.",
+    "Do not use dark colors as gradients. Stick to solid dark backgrounds (e.g. #09090B).",
+    "Create depth through nested elements and defined borders, not just shadows, as shadows on Android can be buggy without elevation.",
+    "Never use AI assistant Emoji characters (like 🤖🧠) for icons. Use @expo/vector-icons.",
+    "Every interaction needs micro-animations (e.g., use TouchableOpacity, or Reanimated).",
+    "Use 2-3x more spacing than feels comfortable within components, but keep dense lists compact for data visibility.",
+    "Use sonner or a React Native equivalent (like react-native-toast-message) for toast notifications if needed, otherwise build a simple animated toast.",
+    "Prioritize using functional React components and standard RN Hooks.",
+    "Components MUST use named exports; Pages MUST use default exports."
+  ]
+}
