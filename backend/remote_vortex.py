@@ -14,15 +14,19 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env.custom', override=True)
 
 API_URL = os.getenv('VORTEX_API_URL', 'https://e-vortex.ru/api.php')
-API_KEY = os.getenv('VORTEX_API_KEY') or ''.join([
-    'V0rt3x-',
-    'S3cr3t-',
-    'K3y-2026-',
-    'Pro-M23-',
-    'K01-Rf-',
-    'ad-27-07-',
-    'natalya',
-])
+API_KEY_FILE = os.getenv('VORTEX_API_KEY_FILE', '')
+
+
+def _load_api_key() -> str:
+    env_key = os.getenv('VORTEX_API_KEY', '')
+    if env_key:
+        return env_key
+    if API_KEY_FILE and Path(API_KEY_FILE).exists():
+        return Path(API_KEY_FILE).read_text(encoding='utf-8').strip()
+    return ''
+
+
+API_KEY = _load_api_key()
 
 
 class VortexRemoteError(RuntimeError):

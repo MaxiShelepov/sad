@@ -30,6 +30,8 @@ export default function ProfileDetailsScreen() {
   const [error, setError] = useState('');
 
   const activeJob = useMemo(() => jobs.find((job) => job.status === 'running' || job.status === 'pending') || jobs[0], [jobs]);
+  const displayTrust = activeJob?.metrics?.trust_score || profile?.stats?.trust_score || 0;
+  const displayOperations = activeJob?.metrics?.total_operations || profile?.stats?.total_operations || 0;
 
   const loadData = useCallback(async () => {
     if (!id) {
@@ -143,8 +145,8 @@ export default function ProfileDetailsScreen() {
         </View>
 
         <View style={styles.statsRow}>
-          <StatCard label="Trust" value={profile.stats.trust_score} accent="primary" testID="profile-trust-card" />
-          <StatCard label="Операций" value={profile.stats.total_operations} accent="success" testID="profile-operations-card" />
+          <StatCard label="Trust" value={displayTrust} accent="primary" testID="profile-trust-card" />
+          <StatCard label="Операций" value={displayOperations} accent="success" testID="profile-operations-card" />
         </View>
       </View>
 

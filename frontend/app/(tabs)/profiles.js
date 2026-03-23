@@ -1,5 +1,5 @@
 import { router, useFocusEffect } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -83,12 +83,6 @@ export default function ProfilesScreen() {
     }, [loadProfiles]),
   );
 
-  useEffect(() => {
-    if (hwid) {
-      loadProfiles(true);
-    }
-  }, [hwid, loadProfiles]);
-
   async function handleCreateOrImport() {
     try {
       setSaving(true);
@@ -105,7 +99,6 @@ export default function ProfilesScreen() {
       setModalVisible(false);
       setLoading(false);
       refreshAll(hwid, true);
-      loadProfiles(true);
     } catch (requestError) {
       setError(requestError.message || 'Не удалось сохранить профиль');
     } finally {
@@ -232,6 +225,7 @@ export default function ProfilesScreen() {
               textAlignVertical="top"
               value={form.batch}
             />
+
             <ActionButton
               disabled={saving || (!form.batch.trim() && (!form.name || !form.email))}
               icon="save"
@@ -319,7 +313,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   textarea: {
-    minHeight: 120,
+    minHeight: 92,
     borderWidth: 1,
     borderRadius: radii.md,
     paddingHorizontal: spacing.md,

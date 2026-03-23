@@ -50,15 +50,18 @@
 - Исправлена проблема цепочки `Профили -> создать профиль -> открыть детали`, список теперь обновляется оптимистично без блокирующего spinner
 - Backend переведён с локальной схемы на реальный `e-vortex.ru/api.php`: лицензии, профили, fingerprint, session и stats теперь идут через живой PHP API
 - Ключ API оставлен только на backend-стороне; frontend его не получает
+- Ключ API вынесен из plaintext-конфига в backend-only runtime secret file и больше не хранится в явном виде в `.env.custom`
 - Добавлена обработка upstream-ошибок PHP API через контролируемый 502 вместо traceback 500
 - UI полностью переработан в более premium mobile-стиле: deep dark фон, неоновые акценты, стеклянные карточки, плавающий tab bar, более дорогой визуальный ритм
 - Добавлена явная UX-подсказка по недоступности farm-режима на trial-подписке
+- Исправлены session save/load через живой API key, runtime metrics в detail screen и race на открытии вкладки профилей
 
 ## Prioritized Backlog
 
 ### P0
 - Дополнительно мониторить стабильность внешнего preview-туннеля при публичной проверке
 - Добить полностью стабильный web-preview flow `Profiles -> Create -> Open -> Warmup` при сетевой нестабильности внешнего tunnel
+- Финально дочистить mobile-web quirks Expo preview (`shadow*` warnings / viewport edge cases), не влияя на Android UX
 
 ### P1
 - Расширить редактирование профиля (не только создание/удаление)

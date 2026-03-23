@@ -101,6 +101,9 @@ export default function FingerprintScreen() {
         <Text style={[styles.heroText, { color: theme.textSecondary }]}>Собирайте более правдоподобный мобильный отпечаток и сохраняйте его напрямую в ваш живой PHP/API backend.</Text>
       </View>
 
+      <ActionButton icon="save" label={saving ? 'Сохранение...' : 'Сохранить сейчас'} onPress={saveFingerprint} disabled={saving} testID="save-fingerprint-top-button" />
+      <ActionButton icon="shuffle" label="Случайный отпечаток" onPress={randomizeFingerprint} disabled={saving} testID="randomize-fingerprint-button" variant="secondary" />
+
       {[
         ['Браузер', 'browser'],
         ['Версия браузера', 'browser_version'],
@@ -129,7 +132,6 @@ export default function FingerprintScreen() {
 
       {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
 
-      <ActionButton icon="shuffle" label="Случайный отпечаток" onPress={randomizeFingerprint} disabled={saving} testID="randomize-fingerprint-button" variant="secondary" />
       <ActionButton icon="save" label={saving ? 'Сохранение...' : 'Сохранить'} onPress={saveFingerprint} disabled={saving} testID="save-fingerprint-button" />
     </Screen>
   );
