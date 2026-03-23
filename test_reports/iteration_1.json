@@ -1,0 +1,63 @@
+{
+  "summary": "Проведены backend pytest и mobile-first UI проверки по ключевым Android-флоу. Backend API стабильно проходит, UI частично проходит: license/tabs/direct profile routes OK, но есть блокер на открытии профиля через список.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Profiles screen list/open action",
+        "issue": "После создания профиля UI часто остается в состоянии загрузки (spinner), кнопка открытия профиля в списке не становится видимой/кликабельной; переход в /profile/[id] из списка не проходит.",
+        "testID": "profile-card-*-open-button",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [
+      {
+        "flow": "Профили -> создать профиль -> открыть детали профиля",
+        "issue": "Создание уходит в backend, но в web preview список профилей нестабильно отрисовывается/остается loading, из-за чего дальнейшая навигация через карточку ломается.",
+        "affected_testIDs": [
+          "open-add-profile-button",
+          "save-profile-button",
+          "profile-card-*-open-button"
+        ]
+      }
+    ],
+    "design_issues": [],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/conftest.py",
+    "/app/backend/tests/test_mobile_port_core_api.py",
+    "/app/test_reports/pytest/pytest_results.xml",
+    "/app/test_reports/ui_license_loaded.jpeg",
+    "/app/test_reports/ui_profile_route_success.jpeg",
+    "/app/test_reports/ui_failure.jpeg",
+    "/app/test_reports/ui_retry_failure.jpeg",
+    "/app/test_reports/ui_alt_flow.jpeg"
+  ],
+  "action_items": [
+    "Разобрать why Profiles screen остается в loading после create/loadProfiles и почему open-button становится невидимой при наличии profile-card в DOM.",
+    "Проверить race-condition вокруг useFocusEffect + loadProfiles + refreshAll(hwid, true) на экране profiles.",
+    "После фикса повторно прогнать e2e: create profile -> open /profile/[id] из карточки -> warmup -> fingerprint -> farm start."
+  ],
+  "critical_code_review_comments": [
+    "Expo logs показывают проблемы совместимости пакетов: @react-native-async-storage/async-storage и expo-clipboard не в ожидаемых версиях для текущего Expo (может вызывать нестабильность).",
+    "В логах supervisor/expo периодически падал ngrok tunnel (TypeError/ngrok timeout), что добавляет нестабильность внешнему preview и может маскировать UI-integration дефекты."
+  ],
+  "updated_files": [
+    "/app/backend/tests/conftest.py",
+    "/app/backend/tests/test_mobile_port_core_api.py",
+    "/app/test_reports/iteration_1.json"
+  ],
+  "success_rate": {
+    "backend": "100%",
+    "frontend": "70%"
+  },
+  "seed_data_creation": "Созданы тестовые subscription/profile/job данные через API в процессе pytest и UI-проверок (TEST_* / ANDROID-TEST-*).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Direct route проверки /profile/[id] и /profile/[id]/fingerprint проходят, warmup стартует и логи появляются. Основной риск сейчас в profiles list rendering/open flow через tabs.",
+  "rca_of_issue": "Repro: открыть Профили -> создать профиль -> дождаться списка -> попытка открыть карточку. Факт: spinner/невидимая open button, timeout на profile-details-screen. Потенциальная RCA: async race или зависание fetch в loadProfiles на web-preview при focus-refresh; дополнительно влияет нестабильность tunnel."
+}
